@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Tokyo Trip V30</title>
+    <title>Tokyo Trip V31</title>
     
     <!-- 1. 樣式庫 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- 2. 核心邏輯庫 -->
+    <!-- 2. 核心邏輯庫 (雙重保險) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
@@ -40,35 +40,13 @@
         .swipe-action { min-width: 80px; scroll-snap-align: end; }
         .route-connector { position: relative; margin-left: 28px; padding-left: 20px; border-left: 3px dashed #FFCDD2; padding-top: 12px; padding-bottom: 12px; }
         
-        /* 強制移除載入畫面的動畫 */
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
-        #loading-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #FFF0F5; z-index: 99999;
-            display: flex; flex-direction: column; justify-content: center; items-center; color: #FF4081;
-            /* 2秒後強制執行淡出動畫，不管 JS 有沒有跑 */
-            animation: fadeOut 0.5s ease-in-out 2s forwards; 
-            pointer-events: none; /* 讓點擊可以穿透 */
-        }
+        /* 緊急救援區 (在最底部) */
+        #panic-zone { text-align: center; padding: 20px; opacity: 0.5; font-size: 10px; margin-bottom: 50px; }
     </style>
-    
-    <!-- 救命腳本：如果真的卡住，手動點擊這裡重置 -->
-    <script>
-        function manualReset() {
-            localStorage.clear();
-            window.location.reload();
-        }
-    </script>
 </head>
 <body class="safe-top h-screen flex flex-col">
 
-    <!-- 這裡的 Loading 會在 2 秒後自動消失 (CSS動畫控制) -->
-    <div id="loading-screen">
-        <i class="fa-solid fa-plane fa-bounce text-4xl mb-4"></i>
-        <div class="text-sm font-bold tracking-widest uppercase">Tokyo Trip V30</div>
-    </div>
-
-    <!-- App 主體 -->
+    <!-- App 主體：直接顯示，沒有 hidden -->
     <div id="app" class="h-full flex flex-col">
 
         <!-- Header -->
@@ -87,7 +65,7 @@
         </header>
 
         <!-- 1. 行程表 (Schedule) -->
-        <div v-show="currentTab === 'schedule'" class="px-5 pb-10 flex-1 overflow-y-auto hide-scrollbar">
+        <div v-if="currentTab === 'schedule'" class="px-5 pb-10 flex-1 overflow-y-auto hide-scrollbar">
             <!-- 天數切換 -->
             <div class="flex items-center justify-between mb-6 pt-2">
                 <div class="flex overflow-x-auto hide-scrollbar gap-3 w-3/4 py-1">
@@ -181,7 +159,7 @@
         </div>
 
         <!-- 2. 清單 (List) -->
-        <div v-show="currentTab === 'list'" class="px-5 pt-2 flex-1 overflow-y-auto hide-scrollbar">
+        <div v-if="currentTab === 'list'" class="px-5 pt-2 flex-1 overflow-y-auto hide-scrollbar">
             <div class="flex p-1.5 bg-white rounded-2xl border-2 border-[#FFCDD2] mb-6 shadow-sm">
                 <button @click="listType = 'buy'" :class="listType === 'buy' ? 'bg-[#FF4081] text-white shadow-md' : 'text-[#FF80AB]'" class="flex-1 py-3 rounded-xl text-xs font-bold transition-all">購物</button>
                 <button @click="listType = 'eat'" :class="listType === 'eat' ? 'bg-[#00BCD4] text-white shadow-md' : 'text-[#00BCD4]'" class="flex-1 py-3 rounded-xl text-xs font-bold transition-all">美食</button>
@@ -251,7 +229,7 @@
         </div>
 
         <!-- 3. 匯率 (Currency) -->
-        <div v-show="currentTab === 'currency'" class="px-5 pt-10 flex-1 overflow-y-auto hide-scrollbar">
+        <div v-if="currentTab === 'currency'" class="px-5 pt-10 flex-1 overflow-y-auto hide-scrollbar">
             <div class="ppg-card p-8 mb-8 text-center bg-white shadow-xl">
                 <div class="text-[10px] tracking-[0.2em] text-[#FF80AB] uppercase mb-2 font-bold">Real-time Rate</div>
                 <div class="flex justify-center items-end gap-3 mb-3 pb-6 border-b-2 border-[#FFF0F5]">
@@ -287,7 +265,7 @@
         </div>
 
         <!-- 4. 分帳 -->
-        <div v-show="currentTab === 'split'" class="px-5 pt-2 flex-1 overflow-y-auto hide-scrollbar">
+        <div v-if="currentTab === 'split'" class="px-5 pt-2 flex-1 overflow-y-auto hide-scrollbar">
             <div class="bg-gradient-to-br from-[#4DD0E1] to-[#00ACC1] text-white p-6 rounded-3xl mb-8 shadow-xl">
                 <h3 class="text-[10px] text-white/80 tracking-widest uppercase mb-1 font-bold">Average</h3>
                 <div class="text-4xl font-black mb-6">¥ {{ Math.round(totalExpense / travelers.length || 0).toLocaleString() }}</div>
@@ -337,7 +315,7 @@
                     <h4 class="text-sm font-bold text-[#4DD0E1] mb-2"><i class="fa-solid fa-truck-medical mr-2"></i> 資料救援</h4>
                     <button @click="recoverOldData" class="w-full bg-[#4DD0E1] text-white py-3 rounded-xl text-xs font-bold active:scale-95 transition shadow-md">📂 嘗試從舊版救援資料</button>
                 </div>
-                <button @click="resetData" class="w-full text-[#FFCDD2] text-xs py-4 font-bold" onclick="manualReset()">清除所有資料 (Reset)</button>
+                <button @click="resetData" class="w-full text-[#FFCDD2] text-xs py-4 font-bold">清除資料重置</button>
             </div>
         </div>
 
@@ -347,6 +325,11 @@
                 <button @click="deleteViewingImage" class="absolute bottom-[-60px] left-1/2 transform -translate-x-1/2 bg-[#FF4081] text-white px-8 py-3 rounded-full text-sm shadow-lg font-bold">刪除</button>
                 <button @click="viewingImage = null" class="absolute -top-12 right-0 text-white text-3xl"><i class="fa-solid fa-times"></i></button>
             </div>
+        </div>
+
+        <!-- 救命按鈕區 -->
+        <div id="panic-zone">
+            <a onclick="localStorage.clear();location.reload();" style="text-decoration:underline;cursor:pointer;">如果畫面空白，請點此強制重置</a>
         </div>
 
     </div>
@@ -468,34 +451,11 @@
                 const totalExpense = computed(() => expenses.value.reduce((sum, item) => sum + Number(item.amount), 0));
                 const getBalance = (person) => { const paid = expenses.value.filter(e => e.payer === person).reduce((sum, e) => sum + Number(e.amount), 0); return Math.round(paid - (totalExpense.value / travelers.value.length)); };
 
-                // V30: Clean Start with Data Safety
-                onMounted(() => {
-                    try {
-                        // Using V30 Key
-                        const keyCurrent = 'tokyoTrip_PPG_V30';
-                        const savedData = localStorage.getItem(keyCurrent);
-                        if (savedData) {
-                            const data = JSON.parse(savedData);
-                            itinerary.value = data.itinerary;
-                            wishlist.value = data.wishlist;
-                            rate.value = data.rate;
-                            expenses.value = data.expenses;
-                            travelerInput.value = data.travelerInput;
-                            lastUpdated.value = data.lastUpdated;
-                            currencyHistory.value = data.currencyHistory;
-                            savedMapUrl.value = data.savedMapUrl;
-                            startDate.value = data.startDate;
-                        }
-                    } catch(e) { console.error("Data corrupted, starting fresh", e); }
-                    
-                    nextTick(() => initSortable());
-                });
-
                 const saveManualBackup = () => { const data = { itinerary: itinerary.value, wishlist: wishlist.value, rate: rate.value, expenses: expenses.value, travelerInput: travelerInput.value, lastUpdated: lastUpdated.value, currencyHistory: currencyHistory.value, savedMapUrl: savedMapUrl.value, startDate: startDate.value }; try { localStorage.setItem('tokyoTrip_ManualBackup', JSON.stringify(data)); alert('備份成功'); } catch(e) { alert('備份失敗(空間不足)'); } };
                 const loadManualBackup = () => { const backup = localStorage.getItem('tokyoTrip_ManualBackup'); if(backup && confirm('還原備份？')) { const data = JSON.parse(backup); itinerary.value = data.itinerary; wishlist.value = data.wishlist; rate.value = data.rate; expenses.value = data.expenses; travelerInput.value = data.travelerInput; lastUpdated.value = data.lastUpdated; currencyHistory.value = data.currencyHistory; savedMapUrl.value = data.savedMapUrl; startDate.value = data.startDate; alert('成功'); nextTick(() => initSortable()); } else if(!backup) { alert('無備份'); } };
-                
+
                 const recoverOldData = () => {
-                    const legacyKeys = ['tokyoTripV23_Fresh', 'tokyoTripV22_Diag', 'tokyoTripV20'];
+                    const legacyKeys = ['tokyoTrip_PPG_V30', 'tokyoTrip_PPG_V29', 'tokyoTripV23_Fresh', 'tokyoTripV22_Diag'];
                     let found = false;
                     for (const key of legacyKeys) {
                         const old = localStorage.getItem(key);
@@ -510,11 +470,30 @@
                     if(!found) alert('未發現舊資料');
                 };
 
+                onMounted(() => {
+                    try {
+                        const savedData = localStorage.getItem('tokyoTrip_V31_Final'); // New Fresh Key
+                        if (savedData) {
+                            const data = JSON.parse(savedData);
+                            itinerary.value = data.itinerary;
+                            wishlist.value = data.wishlist;
+                            rate.value = data.rate;
+                            expenses.value = data.expenses;
+                            travelerInput.value = data.travelerInput;
+                            lastUpdated.value = data.lastUpdated;
+                            currencyHistory.value = data.currencyHistory;
+                            savedMapUrl.value = data.savedMapUrl;
+                            startDate.value = data.startDate;
+                        }
+                    } catch(e) { console.error(e); }
+                    nextTick(() => initSortable());
+                });
+
                 watch([itinerary, wishlist, rate, expenses, travelerInput, lastUpdated, currencyHistory, savedMapUrl, startDate], () => {
-                    try { localStorage.setItem('tokyoTrip_PPG_V30', JSON.stringify({ itinerary: itinerary.value, wishlist: wishlist.value, rate: rate.value, expenses: expenses.value, travelerInput: travelerInput.value, lastUpdated: lastUpdated.value, currencyHistory: currencyHistory.value, savedMapUrl: savedMapUrl.value, startDate: startDate.value })); } catch (e) { console.log('Storage full'); }
+                    try { localStorage.setItem('tokyoTrip_V31_Final', JSON.stringify({ itinerary: itinerary.value, wishlist: wishlist.value, rate: rate.value, expenses: expenses.value, travelerInput: travelerInput.value, lastUpdated: lastUpdated.value, currencyHistory: currencyHistory.value, savedMapUrl: savedMapUrl.value, startDate: startDate.value })); } catch (e) { console.log('Storage full'); }
                 }, { deep: true });
 
-                const resetData = () => { if(confirm('警告：刪除所有資料！')) { localStorage.removeItem('tokyoTrip_PPG_V30'); location.reload(); } }
+                const resetData = () => { if(confirm('警告：刪除所有資料！')) { localStorage.removeItem('tokyoTrip_V31_Final'); location.reload(); } }
 
                 return {
                     currentTab, showSettings, viewingImage,
@@ -524,7 +503,7 @@
                     showUncheckedOnly, savedMapUrl, tempMapUrl, isEditingMap, saveMapUrl,
                     rate, jpyAmount, fetchRate, isLoadingRate, lastUpdated, historyNote, currencyHistory, addHistory, deleteHistory,
                     travelerInput, travelers, expenses, newExpense, addExpense, totalExpense, getBalance, updateTravelers, 
-                    resetData, saveManualBackup, loadManualBackup, startDate, getFullDayDate, getDayDate, recoverOldData
+                    resetData, saveManualBackup, loadManualBackup, startDate, getFullDayDate, recoverOldData
                 };
             }
         }).mount('#app');
