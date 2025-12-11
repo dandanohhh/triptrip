@@ -4,16 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Tokyo Trip V31</title>
+    <title>Tokyo Trip V33</title>
     
-    <!-- 1. 樣式庫 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 1. 最優先的錯誤捕捉 (直接寫在 HTML) -->
+    <style>
+        #debug-panel {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #2d2d2d; color: #ff5555; z-index: 999999;
+            padding: 20px; font-family: monospace; overflow: auto;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .debug-btn {
+            background: #ff5555; color: white; padding: 15px; 
+            border: none; border-radius: 8px; font-size: 16px; font-weight: bold;
+        }
+        /* App 成功啟動後，我們會隱藏 debug-panel */
+    </style>
+    <div id="debug-panel">
+        <h2 style="color:white; font-size:20px;">⚠️ 啟動診斷模式</h2>
+        <p style="color:#ccc;">如果看到這個畫面，代表 App 還沒成功執行。</p>
+        <button class="debug-btn" onclick="hardReset()">🧨 強制清除資料並重整</button>
+        <div id="error-log" style="border:1px solid #555; padding:10px; background:#000;">等待執行...</div>
+    </div>
 
-    <!-- 2. 核心邏輯庫 (雙重保險) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script>
+        function logError(msg) {
+            var log = document.getElementById('error-log');
+            if(log) log.innerHTML += "🔴 " + msg + "<br>";
+        }
+        window.onerror = function(msg, url, line, col, error) {
+            logError(msg + " (Line: " + line + ")");
+            return false;
+        };
+        function hardReset() {
+            localStorage.clear();
+            window.location.reload();
+        }
+    </script>
+
+    <!-- 2. 引入資源 (加上 crossorigin 以獲取錯誤細節) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+    
+    <!-- 改用更穩定的 Vue 3.2.47 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.2.47/vue.global.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js" crossorigin="anonymous"></script>
 
     <style>
         /* --- 飛天小女警配色 --- */
@@ -22,13 +57,10 @@
         .safe-top { padding-top: max(20px, env(safe-area-inset-top)); }
         
         .ppg-card { background-color: white; border-radius: 20px; border: 3px solid white; box-shadow: 0 4px 12px rgba(255, 64, 129, 0.15); transition: transform 0.1s; }
-        .ppg-card:active { transform: scale(0.98); }
         .completed-card { background: #8BC34A !important; color: white !important; border-color: #8BC34A !important; }
         .completed-card input { color: white !important; }
         .completed-card .text-secondary { color: rgba(255,255,255,0.8) !important; }
-        .completed-card i { color: white !important; }
         
-        .hotel-card { background: linear-gradient(135deg, #FF4081 0%, #F50057 100%); color: white; border-radius: 20px; box-shadow: 0 8px 20px rgba(255, 64, 129, 0.3); }
         .glass-nav { background: rgba(255, 255, 255, 0.95); border-top: 1px solid rgba(255, 64, 129, 0.1); padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 10px rgba(0,0,0,0.05); }
         
         input, select { outline: none; background: transparent; }
@@ -39,14 +71,15 @@
         .swipe-content { min-width: 100%; scroll-snap-align: start; }
         .swipe-action { min-width: 80px; scroll-snap-align: end; }
         .route-connector { position: relative; margin-left: 28px; padding-left: 20px; border-left: 3px dashed #FFCDD2; padding-top: 12px; padding-bottom: 12px; }
+        .hotel-card { background: linear-gradient(135deg, #FF4081 0%, #F50057 100%); color: white; border-radius: 20px; box-shadow: 0 8px 20px rgba(255, 64, 129, 0.3); }
         
-        /* 緊急救援區 (在最底部) */
-        #panic-zone { text-align: center; padding: 20px; opacity: 0.5; font-size: 10px; margin-bottom: 50px; }
+        /* 隱藏 App 直到掛載完成 */
+        #app { visibility: hidden; }
+        #app.loaded { visibility: visible; }
     </style>
 </head>
 <body class="safe-top h-screen flex flex-col">
 
-    <!-- App 主體：直接顯示，沒有 hidden -->
     <div id="app" class="h-full flex flex-col">
 
         <!-- Header -->
@@ -101,7 +134,7 @@
                                 </div>
                             </div>
                             <div class="flex-1 pt-1 min-w-0 pr-6">
-                                <input type="text" v-model="event.location" placeholder="地點" class="w-full text-lg font-bold text-[#333] mb-1 placeholder-[#FFCDD2]">
+                                <input type="text" v-model="event.location" placeholder="地點 / 航班" class="w-full text-lg font-bold text-[#333] mb-1 placeholder-[#FFCDD2]">
                                 <input type="text" v-model="event.note" placeholder="備註..." class="w-full text-xs text-[#FF4081] mb-3 opacity-80 placeholder-[#FFCDD2]">
                                 <div class="flex items-center gap-3">
                                     <a :href="getMapLink(event.location)" target="_blank" class="inline-flex items-center text-[10px] font-bold text-white bg-[#00BCD4] px-3 py-1.5 rounded-full shadow-md">
@@ -327,11 +360,6 @@
             </div>
         </div>
 
-        <!-- 救命按鈕區 -->
-        <div id="panic-zone">
-            <a onclick="localStorage.clear();location.reload();" style="text-decoration:underline;cursor:pointer;">如果畫面空白，請點此強制重置</a>
-        </div>
-
     </div>
 
     <script>
@@ -339,6 +367,31 @@
 
         createApp({
             setup() {
+                // 成功啟動後隱藏 Debug Panel
+                onMounted(() => {
+                    var debug = document.getElementById('debug-panel');
+                    if(debug) debug.style.display = 'none';
+                    document.getElementById('app').classList.add('loaded'); // 如果有寫 css transition
+                    
+                    try {
+                        const keyCurrent = 'tokyoTrip_PPG_V33'; // New Fresh Key
+                        const savedData = localStorage.getItem(keyCurrent);
+                        if (savedData) {
+                            const data = JSON.parse(savedData);
+                            itinerary.value = data.itinerary;
+                            wishlist.value = data.wishlist;
+                            rate.value = data.rate;
+                            expenses.value = data.expenses;
+                            travelerInput.value = data.travelerInput;
+                            lastUpdated.value = data.lastUpdated;
+                            currencyHistory.value = data.currencyHistory;
+                            savedMapUrl.value = data.savedMapUrl;
+                            startDate.value = data.startDate;
+                        }
+                    } catch(e) { console.error(e); }
+                    nextTick(() => initSortable());
+                });
+
                 const currentTab = ref('schedule');
                 const showSettings = ref(false);
                 const viewingImage = ref(null);
@@ -455,7 +508,7 @@
                 const loadManualBackup = () => { const backup = localStorage.getItem('tokyoTrip_ManualBackup'); if(backup && confirm('還原備份？')) { const data = JSON.parse(backup); itinerary.value = data.itinerary; wishlist.value = data.wishlist; rate.value = data.rate; expenses.value = data.expenses; travelerInput.value = data.travelerInput; lastUpdated.value = data.lastUpdated; currencyHistory.value = data.currencyHistory; savedMapUrl.value = data.savedMapUrl; startDate.value = data.startDate; alert('成功'); nextTick(() => initSortable()); } else if(!backup) { alert('無備份'); } };
 
                 const recoverOldData = () => {
-                    const legacyKeys = ['tokyoTrip_PPG_V30', 'tokyoTrip_PPG_V29', 'tokyoTripV23_Fresh', 'tokyoTripV22_Diag'];
+                    const legacyKeys = ['tokyoTrip_PPG_V32', 'tokyoTrip_PPG_V30', 'tokyoTrip_PPG_V29'];
                     let found = false;
                     for (const key of legacyKeys) {
                         const old = localStorage.getItem(key);
@@ -470,30 +523,11 @@
                     if(!found) alert('未發現舊資料');
                 };
 
-                onMounted(() => {
-                    try {
-                        const savedData = localStorage.getItem('tokyoTrip_V31_Final'); // New Fresh Key
-                        if (savedData) {
-                            const data = JSON.parse(savedData);
-                            itinerary.value = data.itinerary;
-                            wishlist.value = data.wishlist;
-                            rate.value = data.rate;
-                            expenses.value = data.expenses;
-                            travelerInput.value = data.travelerInput;
-                            lastUpdated.value = data.lastUpdated;
-                            currencyHistory.value = data.currencyHistory;
-                            savedMapUrl.value = data.savedMapUrl;
-                            startDate.value = data.startDate;
-                        }
-                    } catch(e) { console.error(e); }
-                    nextTick(() => initSortable());
-                });
-
                 watch([itinerary, wishlist, rate, expenses, travelerInput, lastUpdated, currencyHistory, savedMapUrl, startDate], () => {
-                    try { localStorage.setItem('tokyoTrip_V31_Final', JSON.stringify({ itinerary: itinerary.value, wishlist: wishlist.value, rate: rate.value, expenses: expenses.value, travelerInput: travelerInput.value, lastUpdated: lastUpdated.value, currencyHistory: currencyHistory.value, savedMapUrl: savedMapUrl.value, startDate: startDate.value })); } catch (e) { console.log('Storage full'); }
+                    try { localStorage.setItem('tokyoTrip_PPG_V33', JSON.stringify({ itinerary: itinerary.value, wishlist: wishlist.value, rate: rate.value, expenses: expenses.value, travelerInput: travelerInput.value, lastUpdated: lastUpdated.value, currencyHistory: currencyHistory.value, savedMapUrl: savedMapUrl.value, startDate: startDate.value })); } catch (e) { console.log('Storage full'); }
                 }, { deep: true });
 
-                const resetData = () => { if(confirm('警告：刪除所有資料！')) { localStorage.removeItem('tokyoTrip_V31_Final'); location.reload(); } }
+                const resetData = () => { if(confirm('警告：刪除所有資料！')) { localStorage.removeItem('tokyoTrip_PPG_V33'); location.reload(); } }
 
                 return {
                     currentTab, showSettings, viewingImage,
@@ -503,7 +537,7 @@
                     showUncheckedOnly, savedMapUrl, tempMapUrl, isEditingMap, saveMapUrl,
                     rate, jpyAmount, fetchRate, isLoadingRate, lastUpdated, historyNote, currencyHistory, addHistory, deleteHistory,
                     travelerInput, travelers, expenses, newExpense, addExpense, totalExpense, getBalance, updateTravelers, 
-                    resetData, saveManualBackup, loadManualBackup, startDate, getFullDayDate, recoverOldData
+                    resetData, saveManualBackup, loadManualBackup, startDate, getFullDayDate, getDayDate, recoverOldData
                 };
             }
         }).mount('#app');
